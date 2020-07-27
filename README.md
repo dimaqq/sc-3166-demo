@@ -1,4 +1,4 @@
-A reproducer for styled-components#3166
+A reproducer for https://github.com/styled-components/styled-components/issues/3211
 
 #### What is going on
 
