@@ -2,8 +2,7 @@ A reproducer for styled-components#3166
 
 #### What is going on
 
-`styled-components` support 2 build-time environment variables `SC_ATTR` and `SC_DISABLE_SPEEDY`
-(And also their `REACT_APP_` aliases)
+`styled-components` support build-time environment variables `SC_ATTR` and `SC_DISABLE_SPEEDY` and react aliases.
 
 There is a bug in create-react-app / react-scripts / webpack where environment variables that are referenced but not defined are not optimised away.
 
