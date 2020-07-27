@@ -2,19 +2,29 @@ A reproducer for styled-components#3166
 
 #### What is going on
 
-`styled-components` support 2 build-time environment variables `SC_ATTR` and `SC_DISABLE_SPEEDY`, plus their `REACT_APP_` aliases.
+`styled-components` support 2 build-time environment variables `SC_ATTR` and `SC_DISABLE_SPEEDY`
+(And also their `REACT_APP_` aliases)
 
-This triggers a bug in create-react-app / webpack where environment variables that are referenced but not defined are not optimised away.
+There is a bug in create-react-app / react-scripts / webpack where environment variables that are referenced but not defined are not optimised away.
+
+Most users (?) do not set `REACT_APP_SC_*` variables, triggering this bug.
 
 Thus the entire† environment variable block is included.
 
 † `create-react-app` cleans the shell environment, only variables starting with `REACT_APP_` are allowed, and apparently some predefined values.
 
+#### Why is it bad
+
+* the built package is larger
+* there's a chance of leaking something†
+
+† For example, if someone builds their project with `env REACT_APP_SECRET_TOKEN=4242 yarn build` that value is now included in the built package.
+
 #### References
 
-Variables were introduced in:
+`SC_ATTR` was introduced long time ago: https://github.com/oliverlaz/styled-components/blame/2b1d01e889c7e7259c674a2c61c585419a9a28f9/packages/styled-components/src/constants.js
 
-https://github.com/styled-components/styled-components/pull/2501 (`REACT_APP_` prefix)
+https://github.com/styled-components/styled-components/pull/2501 added the `REACT_APP_` prefix to both variables
 
 https://github.com/styled-components/styled-components/issues/3166 (previous bug report for this issue)
 
