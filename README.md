@@ -1,68 +1,132 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A reproducer for styled-components#3166
 
-## Available Scripts
+#### What is going on
 
-In the project directory, you can run:
+`styled-components` support 2 build-time environment variables `SC_ATTR` and `SC_DISABLE_SPEEDY`, plus their `REACT_APP_` aliases.
 
-### `yarn start`
+This triggers a bug in create-react-app / webpack where environment variables that are referenced but not defined are not optimised away.
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Thus the entire† environment variable block is included.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+† `create-react-app` cleans the shell environment, only variables starting with `REACT_APP_` are allowed, and apparently some predefined values.
 
-### `yarn test`
+#### References
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Variables were introduced in:
 
-### `yarn build`
+https://github.com/styled-components/styled-components/pull/2501 (`REACT_APP_` prefix)
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+https://github.com/styled-components/styled-components/issues/3166 (previous bug report for this issue)
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+https://github.com/facebook/create-react-app/issues/8961 (upstream bug report)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+#### Without `styled-components`
 
-### `yarn eject`
+All good, no `NODE_ENV` or `WDS_SOCKET_HOST` in the build project.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+#### With `styled-components`
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The built project (beautified) contains the following code:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+```js
+            var b = "undefined" !== typeof e && (Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0
+                }).REACT_APP_SC_ATTR || Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0
+                }).SC_ATTR) || "data-styled",
+                w = "undefined" !== typeof window && "HTMLElement" in window,
+                k = "boolean" === typeof SC_DISABLE_SPEEDY && SC_DISABLE_SPEEDY || "undefined" !== typeof e && (Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0
+                }).REACT_APP_SC_DISABLE_SPEEDY || Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0
+                }).SC_DISABLE_SPEEDY) || !1,
+                x = function() {
+                    return n.nc
+                };
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+#### With `styled-components` with environment variable
 
-## Learn More
+Since the upstream bug is triggered when the referenced environment variable is not set, actually setting it (e.g. empty) should work around the bug.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+For example, building the project using `env REACT_APP_SC_ATTR="zz" yarn build` reduces the injected environment blocks to:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```js
+            var b = "undefined" !== typeof e ? "zz" : "data-styled",
+                w = "undefined" !== typeof window && "HTMLElement" in window,
+                k = "boolean" === typeof SC_DISABLE_SPEEDY && SC_DISABLE_SPEEDY || "undefined" !== typeof e && (Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0,
+                    REACT_APP_SC_ATTR: "zz"
+                }).REACT_APP_SC_DISABLE_SPEEDY || Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0,
+                    REACT_APP_SC_ATTR: "zz"
+                }).SC_DISABLE_SPEEDY) || !1,
+                x = function() {
+                    return n.nc
+                };
+```
 
-### Code Splitting
+Setting more environment variables `env REACT_APP_SC_ATTR="zz" REACT_APP_SC_DISABLE_SPEEDY="" yarn build` reduces the injection further:
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
 
-### Analyzing the Bundle Size
+```js
+            var b = "undefined" !== typeof e ? "zz" : "data-styled",
+                w = "undefined" !== typeof window && "HTMLElement" in window,
+                k = "boolean" === typeof SC_DISABLE_SPEEDY && SC_DISABLE_SPEEDY || "undefined" !== typeof e && Object({
+                    NODE_ENV: "production",
+                    PUBLIC_URL: "",
+                    WDS_SOCKET_HOST: void 0,
+                    WDS_SOCKET_PATH: void 0,
+                    WDS_SOCKET_PORT: void 0,
+                    REACT_APP_SC_DISABLE_SPEEDY: "",
+                    REACT_APP_SC_ATTR: "zz"
+                }).SC_DISABLE_SPEEDY || !1,
+                x = function() {
+                    return n.nc
+                };
+```
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+Note that the unprefixed `SC_DISABLE_SPEEDY` is filtered out by `react-scripts` and is not passed to webpack.
 
-### Making a Progressive Web App
+#### Supply truthy values to environment variables
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
+`env REACT_APP_SC_ATTR="1" REACT_APP_SC_DISABLE_SPEEDY="1" yarn build` eliminates the injected blocks, at the cost of "speedy" / CSSOM API.
 
-### Advanced Configuration
+#### Environment variable value `false` is not falsy
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
+`env REACT_APP_SC_ATTR=dummy REACT_APP_SC_DISABLE_SPEEDY=false yarn build` doesn't work as `"false"` is interpreted as a string:
 
-### Deployment
+```js
+            var b = "undefined" !== typeof e ? "dummy" : "data-styled",
+                w = "undefined" !== typeof window && "HTMLElement" in window,
+                k = "boolean" === typeof SC_DISABLE_SPEEDY && SC_DISABLE_SPEEDY || "undefined" !== typeof e && "false" || !1,
+                x = function() {
+                    return n.nc
+                };
+```
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `yarn build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+Here, `k` becomes `"false"`, a string, and it's used later as `useCSSOMInjection: !k`, that is CSSOM injection is disabled.
